@@ -271,7 +271,8 @@ function switchLanguage() {
 
   select.replaceChildren();
   for (const model of manifest.models) {
-    select.add(new Option(`${model.label ?? model.id.toUpperCase()} · ${mb(model.modelBytes ?? model.bytes)}`, model.id));
+    const bytes = model.modelBytes ?? model.bytes;
+    select.add(new Option(`${model.label ?? model.id.toUpperCase()} · ${mb(bytes, bytes < 1e6 ? 3 : 2)}`, model.id));
   }
   select.value = manifest.models[0]?.id ?? '';
   showChoice();
