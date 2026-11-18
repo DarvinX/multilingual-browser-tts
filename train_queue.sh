@@ -5,7 +5,8 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 export PYTHONPATH="$PWD:$PWD/src:$PWD/pipeline${PYTHONPATH:+:$PYTHONPATH}"
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=3 HF_HUB_OFFLINE=1
 speech_cuda_libs="$HOME/miniconda3/envs/torch_env/lib/python3.12/site-packages/nvidia"
-export LD_LIBRARY_PATH="$speech_cuda_libs/cublas/lib:$speech_cuda_libs/cudnn/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+speech_library_paths=$(find "$speech_cuda_libs" -maxdepth 2 -type d -name lib | paste -sd:)
+export LD_LIBRARY_PATH="$speech_library_paths${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 trainer=${TTS_PYTHON:-$HOME/tiny-voca/.venv/bin/python}
 scorer=${TTS_MOS_PYTHON:-$HOME/tiny-voca/work/utmos-env/bin/python}
 onnx_deps=${TTS_ONNX_DEPS:-$HOME/tiny-voca/runs/bengali-browser/build-deps}
@@ -55,6 +56,9 @@ train_language() {
       if [[ ! -s "$candidate/checkpoint.pt.gz" ]]; then
         ln "$src" "$candidate/checkpoint.pt.gz" || return
       fi
+      if [[ ! -s "$candidate/checkpoint-fp32.pt" ]]; then
+        ln "$stages/$phase/step-$steps-fp32.pt" "$candidate/checkpoint-fp32.pt" || return
+      fi
       if [[ ! -s "$candidate/browser/size.json" ]]; then
         PYTHONPATH="$PYTHONPATH:$onnx_deps" "$trainer" -u pipeline/export_voice.py "$candidate/checkpoint.pt.gz" \
             "$frontend" "$candidate/browser" || return
@@ -84,7 +88,12 @@ PY
       gpu "$scorer" -u pipeline/score_voice.py "$candidate/checkpoint.pt.gz" "$frontend" "$data/test.jsonl" "$candidate/test" || return
     fi
     if [[ ! -s "$candidate/test/cer.json" ]]; then
-      gpu python -u pipeline/score_intelligibility.py "$candidate/test" "$language" || return
+      if [[ "$language" == en ]]; then
+        gpu python -u pipeline/score_intelligibility.py "$candidate/test" "$language" || return
+      else
+        gpu "$trainer" -u pipeline/score_intelligibility.py "$candidate/test" "$language" \
+            --indic-models artifacts/indic-asr || return
+      fi
     fi
     candidates+=("$candidate")
   done

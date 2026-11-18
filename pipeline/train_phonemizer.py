@@ -3,6 +3,7 @@ import argparse
 from collections import defaultdict
 import hashlib
 import json
+import os
 from pathlib import Path
 import random
 from statistics import mean
@@ -113,7 +114,10 @@ def evaluate(model, examples, device, batch_size):
 
 def save_checkpoint(path, checkpoint):
     pending = path.with_suffix(".tmp")
-    torch.save(checkpoint, pending)
+    with pending.open("wb") as handle:
+        torch.save(checkpoint, handle)
+        handle.flush()
+        os.fsync(handle.fileno())
     pending.replace(path)
 
 
@@ -162,6 +166,8 @@ def main(argv=None, lexicon_data=None):
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.002)
     out = args.output
     out.mkdir(parents=True, exist_ok=True)
+    identity = hashlib.sha256(json.dumps([trainable, ipa, args.seed, args.batch_size], sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    resume_path = out / "resume.pt"
     print(json.dumps({
         "device": str(device), "splits": {k: len(v) for k, v in splits.items()},
         "lookup_words": len(lexicon), "phone_count": len(ipa), "grapheme_count": len(alphabet),
@@ -170,8 +176,23 @@ def main(argv=None, lexicon_data=None):
 
     history = []
     best_per = float("inf")
+    first_epoch = 1
+    if resume_path.exists():
+        resume = torch.load(resume_path, map_location="cpu", weights_only=True)
+        if resume["identity"] != identity:
+            raise ValueError("G2P training inputs changed since the saved run")
+        history = resume["history"]
+        first_epoch = len(history) + 1
+        best_per = resume["best_per"]
+        model.load_state_dict(resume["weights"])
+        optimizer.load_state_dict(resume["optimizer"])
+        rng.setstate(resume["python_rng"])
+        torch.set_rng_state(resume["torch_rng"])
+        if device.type == "cuda":
+            torch.cuda.set_rng_state(resume["cuda_rng"])
+        print(f"Resuming G2P at epoch {first_epoch}", flush=True)
     started = perf_counter()
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(first_epoch, args.epochs + 1):
         for group in optimizer.param_groups:
             group["lr"] = 0.002 * 0.975 ** (epoch - 1)
         model.train()
@@ -201,6 +222,10 @@ def main(argv=None, lexicon_data=None):
             checkpoint["epoch"] = epoch
             save_checkpoint(out / "phonemizer.pt", checkpoint)
         history.append(result)
+        save_checkpoint(resume_path, {"identity": identity, "weights": model.state_dict(), "optimizer": optimizer.state_dict(),
+                                      "history": history, "best_per": best_per, "python_rng": rng.getstate(),
+                                      "torch_rng": torch.get_rng_state(),
+                                      "cuda_rng": torch.cuda.get_rng_state() if device.type == "cuda" else None})
         print(json.dumps(result), flush=True)
         (out / "training-metrics.json").write_text(json.dumps({"history": history}, indent=2) + "\n")
 

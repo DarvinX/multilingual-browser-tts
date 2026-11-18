@@ -9,6 +9,7 @@ from pathlib import Path
 import random
 import sqlite3
 import unicodedata
+import wave
 
 import numpy as np
 
@@ -82,11 +83,25 @@ def records(path):
                 continue
 
 
-def audit(directory, target, language, device, limit):
-    from faster_whisper.audio import decode_audio
+def read_pcm(path):
+    from scipy.signal import resample_poly
+
+    with wave.open(str(path), "rb") as recording:
+        if recording.getframerate() != 24000 or recording.getnchannels() != 1 or recording.getsampwidth() != 2:
+            raise ValueError(f"Unexpected synthesis WAV format: {path}")
+        pcm = np.frombuffer(recording.readframes(recording.getnframes()), dtype="<i2").astype(np.float32) / 32768
+    return resample_poly(pcm, 2, 3).astype(np.float32)
+
+
+def audit(directory, target, language, device, limit, indic_models=None, ids_from=None):
 
     target.parent.mkdir(parents=True, exist_ok=True)
     available = read_rows(directory)
+    if ids_from:
+        ids = {row["id"] for row in records(ids_from)}
+        available = [row for row in available if row["id"] in ids]
+        if len(available) != len(ids):
+            raise ValueError("Some audit reference IDs are missing from the synthesis database")
     if limit:
         available = random.Random(1701).sample(available, min(limit, len(available)))
     processed = {row["id"]: row.get("pcm_sha256") for row in records(target)}
@@ -95,19 +110,26 @@ def audit(directory, target, language, device, limit):
     print(f"{language}: {len(pending)} recordings to audit", flush=True)
     if not pending:
         return
-    model = Recognizer(device)
+    recognizer_id = ASR
+    if indic_models:
+        from indic_asr import REPO, IndicRecognizer
+
+        model = IndicRecognizer(indic_models, language, device)
+        recognizer_id = REPO
+    else:
+        model = Recognizer(device)
     if target.exists() and (data := target.read_bytes()) and not data.endswith(b"\n"):
         with target.open("r+b") as handle:
             handle.truncate(data.rfind(b"\n") + 1)
     with target.open("a", encoding="utf-8") as handle:
         for offset in range(0, len(pending), 32):
             bunch = pending[offset:offset + 32]
-            waves = [decode_audio(directory / row["audio"], sampling_rate=RATE) for row in bunch]
+            waves = [read_pcm(directory / row["audio"]) for row in bunch]
             for row, result in zip(bunch, model.transcribe(waves, language), strict=True):
                 reference = normal(row["text"])
                 edits = distance(reference, normal(result["hypothesis"]))
                 result.update(id=row["id"], edits=edits, characters=len(reference), asr_cer=edits / max(1, len(reference)),
-                              pcm_sha256=row["pcm_sha256"])
+                              pcm_sha256=row["pcm_sha256"], asr=recognizer_id)
                 handle.write(json.dumps(result, ensure_ascii=False) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
@@ -135,6 +157,10 @@ def finalize(generated, audit_path, release, max_cer):
         raise ValueError(f"Only {hours:.2f} hours pass the {language} audit at CER {max_cer}")
     release.mkdir(parents=True, exist_ok=True)
     checks = [verified[row["id"]] for row in accepted]
+    recognizers = {row.get("asr", ASR) for row in checks}
+    if len(recognizers) != 1:
+        raise ValueError("Finalize a release using one recognition benchmark")
+    recognizer = recognizers.pop()
     aggregate = sum(row["edits"] for row in checks) / sum(row["characters"] for row in checks)
     for row in accepted:
         dest = release / row["audio"]
@@ -148,7 +174,7 @@ def finalize(generated, audit_path, release, max_cer):
         temp.replace(pat)
     (release / "source.json").write_text(json.dumps(source, ensure_ascii=False, indent=2) + "\n")
     stats = {"clips": len(accepted), "audio_hours": hours, "overall_asr_cer": aggregate,
-             "maximum_clip_asr_cer": max_cer, "asr": ASR, "generated_clips": len(all_rows),
+             "maximum_clip_asr_cer": max_cer, "asr": recognizer, "generated_clips": len(all_rows),
              "manifest_sha256": hashlib.sha256((release / "metadata.jsonl").read_bytes()).hexdigest()}
     (release / "summary.json").write_text(json.dumps(stats, indent=2) + "\n")
     links = "\n".join(f"- [{entry['url'].rsplit('/', 1)[-1]}]({entry['url']}) · {entry['license']}"
@@ -169,7 +195,7 @@ def finalize(generated, audit_path, release, max_cer):
         f"[inference engine](https://github.com/MayaResearch/maya2-native/tree/{source['engine_revision']}) under Apache 2.0, "
         "with the [Kyutai Mimi codec](https://huggingface.co/kyutai/mimi) under CC BY 4.0. "
         "The generator filters clips for normal termination, duration, silence, and clipping. "
-        f"An independent [Whisper large-v3 recognizer](https://huggingface.co/{ASR}) screened the recordings at a per-clip CER of {max_cer:.0%}. "
+        f"An independent [speech recognizer](https://huggingface.co/{recognizer}) screened the recordings at a per-clip CER of {max_cer:.0%}. "
         f"Its aggregate CER on accepted clips was {aggregate:.2%}. Recognition errors count toward CER. "
         "`asr-audit.jsonl` contains the independent hypotheses and word times.\n"
     )
@@ -185,7 +211,9 @@ if __name__ == "__main__":
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--release", type=Path)
     parser.add_argument("--max-cer", type=float, default=0.20)
+    parser.add_argument("--indic-models", type=Path)
+    parser.add_argument("--ids-from", type=Path)
     args = parser.parse_args()
-    audit(args.generated, args.audit, args.language, args.device, args.limit)
+    audit(args.generated, args.audit, args.language, args.device, args.limit, args.indic_models, args.ids_from)
     if args.release:
         finalize(args.generated, args.audit, args.release, args.max_cer)
