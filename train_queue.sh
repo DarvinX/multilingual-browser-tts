@@ -101,6 +101,10 @@ PY
     echo "No $language validation candidate met 2.25 predicted MOS and the byte cap. Review before shipping."
     return 2
   fi
+  if [[ ! -s "$marker" ]]; then
+    echo "Model evaluation completed; waiting for the dataset citation to be published."
+    return 3
+  fi
   HF_HUB_OFFLINE=0 python -u pipeline/publish_voice.py "$release" "$(cat "$marker")" "$frontend" \
       "artifacts/hf/models/$language" "${candidates[@]}" || return
 }
@@ -112,7 +116,7 @@ while true; do
     published="artifacts/published/$language-model.txt"
     if [[ -s "$published" ]]; then continue; fi
     pending=$((pending + 1))
-    if [[ ! -s "$marker" ]]; then continue; fi
+    if [[ ! -s "$marker" && ! -f "artifacts/releases/$language/.ready" ]]; then continue; fi
     if train_language "$language" "$marker" 2>&1 | tee -a "artifacts/logs/train-$language.log"; then
       tail -n 1 "artifacts/logs/train-$language.log" > "$published.tmp"
       mv -T "$published.tmp" "$published"

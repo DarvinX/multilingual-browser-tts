@@ -16,10 +16,15 @@ status=0
 mkdir -p artifacts
 for language in "$@"; do
   mkdir -p artifacts/logs
+  ready="artifacts/releases/$language/.ready"
+  if [[ -f "$ready" ]]; then
+    echo "The audited $language dataset is already sealed."
+    continue
+  fi
   echo "Starting Maya synthesis for $language"
   if ! flock -s artifacts/gpu.lock "$maya_python" -u synthesize.py \
       --models "$maya_models" --prompts "artifacts/prompts/$language" \
-      --output "artifacts/generated/$language" --hours "${SYNTHESIS_HOURS:-22.5}" \
+      --output "artifacts/generated/$language" --hours "${SYNTHESIS_HOURS:-22.5}" --release-marker "$ready" \
       2>&1 | tee -a "artifacts/logs/synthesis-$language.log"; then
     echo "Synthesis for $language stopped with an error. Continuing with the next language."
     status=1

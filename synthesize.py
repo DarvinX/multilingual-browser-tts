@@ -216,7 +216,7 @@ def run(database, output, args):
                 pending[pool.submit(synthesize, tts, item, language, voice)] = item
                 if len(pending) == args.workers:
                     break
-            while pending and total < target:
+            while pending and total < target and not (args.release_marker and args.release_marker.exists()):
                 done, _ = wait(pending, return_when=FIRST_COMPLETED)
                 for future in sorted(done, key=lambda job: pending[job]["id"]):
                     item = pending.pop(future)
@@ -255,9 +255,10 @@ def run(database, output, args):
         finished = True
     finally:
         tts.close()
-        status = "complete" if args.pilot or total >= target else "exhausted" if finished else "generating"
+        sealed = args.release_marker and args.release_marker.exists()
+        status = "complete" if args.pilot or total >= target or sealed else "exhausted" if finished else "generating"
         publish(database, output, progress(status))
-    if not args.pilot and total < target:
+    if not args.pilot and total < target and not sealed:
         raise RuntimeError(f"Only {total / SAMPLE_RATE / 3600:.2f} hours generated before prompts ran out.")
 
 
@@ -269,4 +270,5 @@ if __name__ == "__main__":
     parser.add_argument("--hours", type=float, default=20)
     parser.add_argument("--workers", type=int, choices=(8, 16), default=16)
     parser.add_argument("--pilot", type=int, default=0, help="Limit to this many prompts")
+    parser.add_argument("--release-marker", type=Path, help="Stop once the independent audit seals the release")
     generate(parser.parse_args())
