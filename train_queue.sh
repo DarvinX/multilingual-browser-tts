@@ -12,7 +12,7 @@ scorer=${TTS_MOS_PYTHON:-$HOME/tiny-voca/work/utmos-env/bin/python}
 onnx_deps=${TTS_ONNX_DEPS:-$HOME/tiny-voca/runs/bengali-browser/build-deps}
 reference=artifacts/bn-model/bengali-2.255-fp32.pt
 reference_vocab=artifacts/bn-model/frontend/phone-vocab.json
-languages=(hi en ta ml te gu kn)
+mapfile -t languages < release-languages.txt
 mkdir -p artifacts/logs artifacts/published
 
 gpu() {

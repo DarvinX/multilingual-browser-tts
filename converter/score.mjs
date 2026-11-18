@@ -4,7 +4,8 @@ import { toNative } from './converter.mjs';
 
 const [assets, bengaliRoot, output] = process.argv.slice(2);
 const bn = await import(new URL(`${bengaliRoot}/frontend.js`, 'file:').href);
-const languageCodes = ['bn', 'gu', 'hi', 'kn', 'ml', 'ta', 'te', 'en'];
+const active = readFileSync(new URL('../release-languages.txt', import.meta.url), 'utf8').trim().split(/\s+/);
+const languageCodes = ['bn', ...active];
 const normal = text => Array.from(text.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{M}\p{N}]/gu, ''));
 
 function distance(a, b) {

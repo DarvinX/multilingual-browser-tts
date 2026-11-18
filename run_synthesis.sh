@@ -10,7 +10,8 @@ maya_models=${MAYA_MODELS:-$maya_dir/models}
 export HF_HUB_OFFLINE=1 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2
 export PYTHONPATH="$maya_engine${PYTHONPATH:+:$PYTHONPATH}"
 if (( $# == 0 )); then
-  set -- hi en ta ml te gu kn
+  mapfile -t languages < release-languages.txt
+  set -- "${languages[@]}"
 fi
 status=0
 mkdir -p artifacts

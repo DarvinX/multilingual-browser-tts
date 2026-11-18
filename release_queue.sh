@@ -7,7 +7,7 @@ speech_cuda_libs="$HOME/miniconda3/envs/torch_env/lib/python3.12/site-packages/n
 speech_library_paths=$(find "$speech_cuda_libs" -maxdepth 2 -type d -name lib | paste -sd:)
 export LD_LIBRARY_PATH="$speech_library_paths${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 indic_python=${TTS_PYTHON:-$HOME/tiny-voca/.venv/bin/python}
-languages=(hi en ta ml te gu kn)
+mapfile -t languages < release-languages.txt
 mkdir -p artifacts/logs artifacts/audit artifacts/published
 
 info() {

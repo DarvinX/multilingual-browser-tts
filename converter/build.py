@@ -62,7 +62,8 @@ def spellings(word, language):
 
 def build(source, prompt_dir, output):
     output.mkdir(parents=True, exist_ok=True)
-    for language in SCRIPTS:
+    active = (Path(__file__).resolve().parents[1] / "release-languages.txt").read_text().split()
+    for language in (code for code in active if code in SCRIPTS):
         prompts = [json.loads(line)["input_text"] for line in (prompt_dir / language / "prompts.jsonl").read_text().splitlines()]
         tokens = [words(text, language) for text in prompts]
         frequency = Counter(word for sentence in tokens for word in sentence)

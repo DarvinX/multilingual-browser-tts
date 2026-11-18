@@ -11,7 +11,6 @@ from prompts import LANGUAGES
 ROOT = Path(__file__).resolve().parent
 SCRIPTS = {"bn": ("বাংলা", "অ"), "gu": ("ગુજરાતી", "અ"), "hi": ("हिन्दी", "अ"), "kn": ("ಕನ್ನಡ", "ಅ"),
            "ml": ("മലയാളം", "അ"), "ta": ("தமிழ்", "அ"), "te": ("తెలుగు", "అ"), "en": ("English", "A")}
-ORDER = ("bn", "gu", "hi", "kn", "ml", "ta", "te", "en")
 
 
 def model_choice(directory, url, mode, label=None):
@@ -30,7 +29,8 @@ def build(bengali, output):
     for path in (ROOT / "artifacts/bn-model/browser").iterdir():
         shutil.copy2(path, compact)
     languages = []
-    for code in ORDER:
+    active = {"bn", *(ROOT / "release-languages.txt").read_text().split()}
+    for code in (code for code in SCRIPTS if code in active):
         name, voice, _ = LANGUAGES[code]
         native, mark = SCRIPTS[code]
         fixture = ROOT / "converter/fixtures" / f"{code}.jsonl"

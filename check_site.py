@@ -24,8 +24,11 @@ def check(url):
         assert page.goto(url).ok
         language = page.locator("#language")
         expect(language).to_be_enabled()
-        assert language.locator("option").count() == 8
         released = page.request.get(url + "languages.json").json()
+        active = {"bn", *Path(__file__).with_name("release-languages.txt").read_text().split()}
+        assert {locale["code"] for locale in released} == active
+        options = language.locator("option").evaluate_all("options => options.map(option => option.value)")
+        assert options == [locale["code"] for locale in released]
         for locale in released:
             code = locale["code"]
             before = len(requests)
