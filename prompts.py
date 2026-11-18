@@ -3,6 +3,7 @@
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import gzip
 import json
 from pathlib import Path
 import random
@@ -82,7 +83,7 @@ def is_acceptable(text, script):
     return 20 <= len(text) <= 220 and 4 <= len(text.split()) <= 35 and all(map(allowed, text))
 
 
-def prepare(language, directory):
+def prepare(language, directory, reserve=None):
     name, voice, script = LANGUAGES[language]
     directory.mkdir(parents=True, exist_ok=True)
     records = {}
@@ -111,10 +112,34 @@ def prepare(language, directory):
                              "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
 
     prompts = list(records.values())
-    random.Random(19402).shuffle(prompts)
+    rng = random.Random(19402)
+    rng.shuffle(prompts)
     # Give conversational questions and exclamations sufficient coverage even when a large source is sampled.
     prompts.sort(key=lambda r: (r["prosody_hint"] == "statement") and len(r["input_text"].split()) < 6)
     prompts = prompts[:32000]
+    if reserve and language in OPEN_SLR and len(prompts) < 32000:
+        original_count = len(prompts)
+        path = reserve / language / "native_script_wikipedia" / f"{language}.wiki-filt.train.text.shuf.txt.gz"
+        citation = "https://github.com/google-research-datasets/dakshina#native-script-wikipedia"
+        with gzip.open(path, "rt", encoding="utf-8") as text_source:
+            for number, raw in enumerate(text_source, start=1):
+                text = " ".join(unicodedata.normalize("NFC", raw).split())
+                if not is_acceptable(text, script) or len(text.split()) < 9:
+                    continue
+                key = "".join(ch for ch in text.casefold() if ch not in PUNCTUATION)
+                if key in records:
+                    continue
+                uid = hashlib.sha256(f"{language}\0{key}".encode()).hexdigest()[:20]
+                item = {"id": uid, "input_text": text if text.endswith(("?", "!", ".", "।")) else text + ".",
+                        "source_text": raw.rstrip("\n"), "source_line": number, "source": citation,
+                        "source_license": "CC-BY-SA-4.0", "prosody_hint": "question" if text.endswith("?") else
+                        "exclamation" if text.endswith("!") else "statement"}
+                records[key] = item
+                prompts.append(item)
+                if len(prompts) >= 32000:
+                    break
+        bibliography.append({"url": citation, "license": "CC-BY-SA-4.0", "accepted_prompts": len(prompts) - original_count,
+                             "filename": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
     with (directory / "prompts.jsonl").open("w", encoding="utf-8") as stream:
         for record in prompts:
             stream.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -129,6 +154,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
     parser.add_argument("languages", nargs="+", choices=LANGUAGES)
+    parser.add_argument("--reserve-dir", type=Path)
     args = parser.parse_args()
     with ThreadPoolExecutor(max_workers=4) as pool:
-        list(pool.map(lambda language: prepare(language, args.output / language), args.languages))
+        list(pool.map(lambda language: prepare(language, args.output / language, args.reserve_dir), args.languages))

@@ -37,12 +37,17 @@ while true; do
       audit="artifacts/audit/$language-ctc.jsonl"
       audit_options=(--indic-models artifacts/indic-asr)
     fi
-    if [[ "$state" == complete ]]; then
-      if ! flock -s artifacts/gpu.lock "$audit_python" -u audit.py "$generated" "$audit" --language "$language" --device cuda \
-          --release "$release" "${audit_options[@]}" 2>&1 | tee -a "artifacts/logs/audit-$language.log"; then
+    enough_raw=$(python -c 'import json,sys; print(int(json.load(open(sys.argv[1]))["audio_seconds"] >= 72000))' "$generated/progress.json")
+    if [[ "$state" == complete || "$state" == exhausted || "$enough_raw" == 1 || -f "$release/.ready" ]]; then
+      early=()
+      if [[ "$state" == generating ]]; then early=(--early-release); fi
+      if [[ ! -f "$release/.ready" ]] && ! flock -s artifacts/gpu.lock "$audit_python" -u audit.py "$generated" "$audit" \
+          --language "$language" --device cuda --release "$release" "${audit_options[@]}" "${early[@]}" \
+          2>&1 | tee -a "artifacts/logs/audit-$language.log"; then
         echo "Audit for $language needs review. See artifacts/logs/audit-$language.log"
         continue
       fi
+      if [[ ! -f "$release/.ready" ]]; then continue; fi
       name=$(info "$release/source.json" language_name)
       voice=$(info "$release/source.json" speaker)
       repo="Hansda/${name,,}-maya2-${voice,,}-20h"

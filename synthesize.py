@@ -196,11 +196,11 @@ def run(database, output, args):
     failure_reasons = Counter()
     pending = {}
 
-    def progress(done=False):
+    def progress(status="generating"):
         elapsed = time.monotonic() - started
         speed = (total - initial_total) / SAMPLE_RATE / max(elapsed, 0.001)
         remaining = max(0, target - total) / SAMPLE_RATE
-        state = {"status": "complete" if done else "generating", "accepted_clips": count,
+        state = {"status": status, "accepted_clips": count,
                  "rejected_clips": rejects, "audio_seconds": total / SAMPLE_RATE,
                  "target_seconds": target / SAMPLE_RATE, "wall_seconds": round(elapsed, 2),
                  "real_time_factor_x": round(speed, 3), "estimated_remaining_seconds": round(remaining / speed) if speed else None,
@@ -209,6 +209,7 @@ def run(database, output, args):
         print(json_line(state).strip(), flush=True)
         return state
 
+    finished = False
     try:
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
             for item in items:
@@ -251,9 +252,11 @@ def run(database, output, args):
                     last_status = now
             for future in pending:
                 future.cancel()
+        finished = True
     finally:
         tts.close()
-        publish(database, output, progress(done=bool(args.pilot) or total >= target))
+        status = "complete" if args.pilot or total >= target else "exhausted" if finished else "generating"
+        publish(database, output, progress(status))
     if not args.pilot and total < target:
         raise RuntimeError(f"Only {total / SAMPLE_RATE / 3600:.2f} hours generated before prompts ran out.")
 

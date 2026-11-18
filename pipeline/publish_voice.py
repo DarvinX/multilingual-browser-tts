@@ -36,6 +36,7 @@ def collect(release, dataset_commit, frontend, candidates, dest):
         files = ("voice.onnx.gz", "model.weights.gz", "frontend.json.gz", "g2p-encode.onnx.gz", "g2p-decode.onnx.gz", "weight-shuffle.js", "size.json")
         for filename in files:
             shutil.copy2(candidate / "browser" / filename, browser / filename)
+        shutil.copy2(Path(__file__).resolve().parents[1] / "web/weights.js", browser)
         shutil.copy2(candidate / "checkpoint.pt.gz", path)
         for split in ("validation", "test"):
             (path / split).mkdir(exist_ok=True)

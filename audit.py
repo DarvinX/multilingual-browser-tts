@@ -137,15 +137,18 @@ def audit(directory, target, language, device, limit, indic_models=None, ids_fro
                 print(f"{language}: audited {offset + len(bunch)}/{len(pending)} pending recordings", flush=True)
 
 
-def finalize(generated, audit_path, release, max_cer):
+def finalize(generated, audit_path, release, max_cer, early=False):
     source = json.loads((generated / "source.json").read_text())
     language, name, speaker = source["language"], source["language_name"], source["speaker"]
     all_rows = read_rows(generated)
     verified = {row["id"]: row for row in records(audit_path)}
-    if set(verified) != {row["id"] for row in all_rows}:
+    if not early and set(verified) != {row["id"] for row in all_rows}:
         raise ValueError("Run the independent speech audit over all synthesized utterances first")
     accepted, total = [], 0
     for row in all_rows:
+        if row["id"] not in verified:
+            # Preserve the original prefix order when synthesis is still running.
+            break
         audit_row = verified[row["id"]]
         if audit_row["asr_cer"] <= max_cer:
             accepted.append({**row, "asr_cer": audit_row["asr_cer"]})
@@ -154,6 +157,9 @@ def finalize(generated, audit_path, release, max_cer):
             break
     hours = total / (3600 * 24000)
     if hours < 20:
+        if early:
+            print(f"{hours:.3f} audited hours ready for {language}. Continuing synthesis.", flush=True)
+            return
         raise ValueError(f"Only {hours:.2f} hours pass the {language} audit at CER {max_cer}")
     release.mkdir(parents=True, exist_ok=True)
     checks = [verified[row["id"]] for row in accepted]
@@ -184,6 +190,8 @@ def finalize(generated, audit_path, release, max_cer):
         credit += "The Rasa transcripts credit [AI4Bharat and Rasa contributors](https://huggingface.co/datasets/ai4bharat/Rasa) and the indic-tts-mini-24k transcript index publisher. "
     if any("openslr.org/" in entry["url"] for entry in source["sources"]):
         credit += "The OpenSLR transcript indices credit the authors and contributors named in their resource pages. "
+    if any("/dakshina" in entry["url"] for entry in source["sources"]):
+        credit += "The native-script reserve credits Google Research's Dakshina dataset and the Wikipedia contributors behind its text snapshot. "
     if language == "ta":
         credit += "The [Tamil Wikisource contributions to Common Voice](https://github.com/common-voice/common-voice/pull/3211) credit Tamil Virtual Academy and Tamil Wikisource contributors. "
     (release / "README.md").write_text(
@@ -199,6 +207,7 @@ def finalize(generated, audit_path, release, max_cer):
         f"Its aggregate CER on accepted clips was {aggregate:.2%}. Recognition errors count toward CER. "
         "`asr-audit.jsonl` contains the independent hypotheses and word times.\n"
     )
+    (release / ".ready").touch()
     print(json.dumps(stats), flush=True)
 
 
@@ -213,7 +222,8 @@ if __name__ == "__main__":
     parser.add_argument("--max-cer", type=float, default=0.20)
     parser.add_argument("--indic-models", type=Path)
     parser.add_argument("--ids-from", type=Path)
+    parser.add_argument("--early-release", action="store_true")
     args = parser.parse_args()
     audit(args.generated, args.audit, args.language, args.device, args.limit, args.indic_models, args.ids_from)
     if args.release:
-        finalize(args.generated, args.audit, args.release, args.max_cer)
+        finalize(args.generated, args.audit, args.release, args.max_cer, args.early_release)
