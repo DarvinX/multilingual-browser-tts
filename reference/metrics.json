@@ -1,0 +1,12 @@
+{
+  "step": 21800,
+  "utterances": 72,
+  "characters": 3785,
+  "tiny_voca_cer": 0.02509907529722589,
+  "maya_cer": 0.020871862615587846,
+  "exact_asr_matches": 34,
+  "generated_audio_seconds": 323.541,
+  "inference_device": "cpu",
+  "synthesis_seconds": 11.277,
+  "synthesis_speed_x": 28.691
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=Resume single-voice multilingual Maya TTS synthesis
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+WorkingDirectory=%h/multilingual-tts
+Environment=PATH=%h/miniconda3/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStartPre=/usr/bin/nvidia-smi --query-gpu=name --format=csv,noheader
+ExecStart=/usr/bin/bash %h/multilingual-tts/run_synthesis.sh
+Restart=on-failure
+RestartSec=300
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

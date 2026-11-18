@@ -1,0 +1,9 @@
+artifacts/
+__pycache__/
+*.py[cod]
+.venv/
+.DS_Store
+RESUME.md
+TODO.md
+AGENTS.md
+drafts/

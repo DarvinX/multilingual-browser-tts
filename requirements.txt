@@ -1,0 +1,14 @@
+numpy
+torch
+torchaudio
+transformers
+soundfile
+librosa
+scipy
+sentencepiece
+onnx
+faster-whisper
+pyarrow
+datasets
+huggingface_hub
+playwright

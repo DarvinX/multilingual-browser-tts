@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Try compact text-to-speech voices that run in your browser.">
+  <meta name="theme-color" content="#f6f2e9">
+  <title>Browser Voice</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" type="module"></script>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div class="wordmark"><span id="script-mark" class="mark" lang="bn" aria-hidden="true">অ</span> Browser Voice</div>
+      <div class="language-control"><label for="language">Language</label><select id="language" disabled></select></div>
+    </header>
+
+    <section class="intro" aria-labelledby="title">
+      <h1 id="title"><span id="language-name">Bengali</span>, <em>out loud.</em></h1>
+      <p id="intro-copy">Hear Bengali script or Romanized Bengali in the Jahnavi voice. Load a model and press Play.</p>
+    </section>
+
+    <div class="studio">
+      <section class="card model" aria-labelledby="model-title">
+        <div class="card-title"><h2 id="model-title">Voice model</h2><span id="voice-name">Jahnavi</span></div>
+        <label for="model">Checkpoint precision</label>
+        <div class="model-controls">
+          <select id="model" disabled aria-describedby="size"></select>
+          <button id="load" type="button" class="primary" disabled>Load model</button>
+        </div>
+        <p id="size" class="caption"></p>
+        <progress id="progress" aria-label="Model download progress" hidden></progress>
+        <p id="model-status" class="status" role="status">Getting model options…</p>
+      </section>
+
+      <form id="compose" class="card compose">
+        <div class="card-title"><h2><label for="text">Text to speak</label></h2><span id="count" aria-hidden="true"></span></div>
+        <textarea id="text" maxlength="2000" required spellcheck="false" dir="auto"></textarea>
+        <div class="actions">
+          <div class="pace">
+            <label for="speed">Speed</label>
+            <output id="speed-value" for="speed">1.00×</output>
+            <input id="speed" type="range" min="0.7" max="1.4" step="0.05" value="1">
+          </div>
+          <button type="submit" id="play" class="primary play" disabled>Play</button>
+        </div>
+        <p id="play-status" class="status" role="status"></p>
+        <section id="audio-result" class="playback" aria-labelledby="playback-title" hidden>
+          <div class="card-title playback-title">
+            <h3 id="playback-title">Playback <span id="audio-meta"></span></h3>
+            <a id="download" download="bengali-voice.wav">Download WAV</a>
+          </div>
+          <audio id="audio" playsinline preload="metadata" hidden></audio>
+          <div class="audio-player">
+            <button id="audio-toggle" type="button" aria-label="Play audio"></button>
+            <div class="audio-track">
+              <div class="audio-seek">
+                <div id="waveform" class="waveform" aria-hidden="true"></div>
+                <input id="seek" type="range" min="0" max="1" step="0.01" value="0" aria-label="Seek audio" disabled>
+              </div>
+              <div class="audio-time" aria-hidden="true"><span id="elapsed">0:00</span><span id="total">0:00</span></div>
+            </div>
+          </div>
+          <div class="transcript">
+            <h4>Pronounced text</h4>
+            <p id="pronounced" lang="bn"></p>
+          </div>
+          <p id="unknown" class="status" hidden></p>
+        </section>
+      </form>
+
+      <section class="card suggestions" aria-labelledby="examples-title">
+        <div class="card-title"><h2 id="examples-title">Try a sentence</h2></div>
+        <div class="examples">
+          <button type="button" lang="bn-Latn">Tumi kokhon bari phirbe?</button>
+          <button type="button" lang="bn-Latn">Kal shokale ami tomar jonno opekkha korbo.</button>
+          <button type="button" lang="bn">আজ বিকেলে বৃষ্টি হলে আমরা বাড়িতেই চা খাব।</button>
+          <button type="button" lang="bn">নদীর ধারে বসে আমরা সূর্য ডোবা দেখলাম।</button>
+        </div>
+      </section>
+    </div>
+
+    <footer class="footer">Your text is processed in this browser. <a href="credits.html">Model credits</a></footer>
+  </main>
+</body>
+</html>

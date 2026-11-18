@@ -1,0 +1,17 @@
+[Unit]
+Description=Resume audit and dataset publishing for multilingual TTS
+After=multilingual-tts-synthesis.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+WorkingDirectory=%h/multilingual-tts
+Environment=PATH=%h/miniconda3/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStartPre=/usr/bin/nvidia-smi --query-gpu=name --format=csv,noheader
+ExecStart=/usr/bin/bash %h/multilingual-tts/release_queue.sh
+Restart=on-failure
+RestartSec=120
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

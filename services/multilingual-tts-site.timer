@@ -1,0 +1,10 @@
+[Unit]
+Description=Reconcile qualified TTS model releases with the browser demo
+
+[Timer]
+OnBootSec=3m
+OnUnitActiveSec=5m
+Unit=multilingual-tts-site.service
+
+[Install]
+WantedBy=timers.target

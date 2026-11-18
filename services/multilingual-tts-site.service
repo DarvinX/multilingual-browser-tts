@@ -1,0 +1,9 @@
+[Unit]
+Description=Deploy verified multilingual TTS voices and check playback
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/multilingual-tts
+Environment=PATH=%h/miniconda3/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/bash %h/multilingual-tts/deploy_site.sh
