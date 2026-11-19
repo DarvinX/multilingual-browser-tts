@@ -96,6 +96,9 @@ def build(bengali, output):
                 url = f"assets/{code}-{variant.name}"
                 shutil.copytree(variant / "browser", output / url, dirs_exist_ok=True)
                 choice = model_choice(output / url, url, variant.name)
+                settings = json.loads((variant / "browser/size.json").read_text())
+                if "pace_scale" in settings:
+                    choice["paceScale"] = settings["pace_scale"]
                 score = json.loads((variant / "test/mos.json").read_text())["predicted_mos"]
                 choice["evaluation"] = {"mos": score, "split": "test"}
                 entry["models"].append(choice)

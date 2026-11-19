@@ -19,6 +19,11 @@ def check(url):
     with sync_playwright() as browser_api:
         browser = browser_api.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox"])
         page = browser.new_page(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True)
+        page.add_init_script("""const send = Worker.prototype.postMessage;
+            Worker.prototype.postMessage = function (message, ...args) {
+                if (message.type === 'play') window.__speechSpeed = message.speed;
+                return send.call(this, message, ...args);
+            };""")
         requests, errors = [], []
         page.on("request", lambda req: requests.append((req.method, req.url)))
         page.on("pageerror", lambda error: errors.append(str(error)))
@@ -70,6 +75,7 @@ def check(url):
                 previous_audio = page.locator("#audio").get_attribute("src")
                 page.locator("#play").click()
                 page.wait_for_function("old => { const a = document.querySelector('audio'); return a.src && a.src !== old && a.duration > 0 && a.currentTime > .09; }", arg=previous_audio, timeout=45000)
+                assert page.evaluate("window.__speechSpeed") == choice.get("paceScale", 1)
                 print(code, choice["id"], round(page.locator("#audio").evaluate("audio => audio.duration"), 2), sentence, flush=True)
         credits = page.get_by_role("link", name="Model credits")
         credits.click()

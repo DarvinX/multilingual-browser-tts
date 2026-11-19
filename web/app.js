@@ -225,7 +225,8 @@ form.addEventListener('submit', event => {
   player.pause();
   status(playStatus, 'Preparing audio…');
   controls();
-  worker.postMessage({ type: 'play', text: text.value.trim(), speed: Number(speed.value),
+  const choice = manifest.models.find(model => model.id === loaded);
+  worker.postMessage({ type: 'play', text: text.value.trim(), speed: Number(speed.value) * (choice?.paceScale ?? 1),
     maxTokens: manifest.maxTokens, sampleRate: manifest.sampleRate });
 });
 
