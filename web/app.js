@@ -53,7 +53,12 @@ function showChoice() {
     return;
   }
   if (choice.modelBytes) {
-    byId('size').textContent = `${choice.modelBytes.toLocaleString()} bytes for this model. The text frontend and browser engine load separately.`;
+    let detail = `${choice.modelBytes.toLocaleString()} bytes for this model. The text frontend and browser engine load separately.`;
+    if (choice.preview) {
+      const split = choice.preview.split === 'test' ? 'held-out test' : 'validation';
+      detail += ` Preview scored ${choice.preview.mos.toFixed(3)} predicted MOS on ${split} audio.`;
+    }
+    byId('size').textContent = detail;
     status(modelStatus, loaded === choice.id ? `${choice.label ?? choice.id.toUpperCase()} is ready.` : 'Press Load model to download this option.');
     controls();
     return;

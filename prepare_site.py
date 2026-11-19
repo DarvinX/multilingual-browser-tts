@@ -1,4 +1,4 @@
-"""Build the multilingual demo using only verified model releases."""
+"""Build the multilingual demo with verified releases and selected previews."""
 
 import argparse
 import json
@@ -9,6 +9,8 @@ from prompts import LANGUAGES
 
 
 ROOT = Path(__file__).resolve().parent
+PREVIEW_ASSETS = ("frontend.json.gz", "g2p-decode.onnx.gz", "g2p-encode.onnx.gz",
+                  "model.weights.gz", "voice.onnx.gz", "weight-shuffle.js")
 SCRIPTS = {"bn": ("বাংলা", "অ"), "gu": ("ગુજરાતી", "અ"), "hi": ("हिन्दी", "अ"), "kn": ("ಕನ್ನಡ", "ಅ"),
            "ml": ("മലയാളം", "അ"), "ta": ("தமிழ்", "அ"), "te": ("తెలుగు", "అ"), "en": ("English", "A")}
 
@@ -20,10 +22,26 @@ def model_choice(directory, url, mode, label=None):
             "weights": f"./{url}/model.weights.gz", "graph": f"./{url}/voice.onnx.gz", "frontend": f"./{url}"}
 
 
+def preview_choice(code, selection, output):
+    phase, mode = selection.split("/")
+    candidate = ROOT / "artifacts/training" / code / "candidates" / phase / mode
+    split = "test" if (candidate / "test/mos.json").is_file() else "validation"
+    score = json.loads((candidate / split / "mos.json").read_text())["predicted_mos"]
+    url = f"assets/{code}-preview-{phase}-{mode}"
+    target = output / url
+    target.mkdir(parents=True, exist_ok=True)
+    for filename in PREVIEW_ASSETS:
+        shutil.copy2(candidate / "browser" / filename, target)
+    choice = model_choice(target, url, f"preview-{mode}", f"{mode.upper()} preview")
+    choice["preview"] = {"mos": score, "split": split}
+    return choice
+
+
 def build(bengali, output):
     shutil.copytree(bengali, output, dirs_exist_ok=True)
     shutil.copytree(ROOT / "web", output, dirs_exist_ok=True)
     manifest = json.loads((bengali / "models.json").read_text())
+    previews = json.loads((ROOT / "site-previews.json").read_text())
     compact = output / "assets" / "bn-compact"
     compact.mkdir(parents=True, exist_ok=True)
     for path in (ROOT / "artifacts/bn-model/browser").iterdir():
@@ -52,11 +70,13 @@ def build(bengali, output):
                 url = f"assets/{code}-{variant.name}"
                 shutil.copytree(variant / "browser", output / url, dirs_exist_ok=True)
                 entry["models"].append(model_choice(output / url, url, variant.name))
-            if code != "en" and entry["models"]:
-                path = output / "assets/converter"
-                path.mkdir(exist_ok=True)
-                shutil.copy2(ROOT / f"artifacts/converter/assets/{code}.json.gz", path)
             entry["models"].sort(key=lambda variant: (variant["id"] != "int8", variant["modelBytes"]))
+        elif code in previews:
+            entry["models"].append(preview_choice(code, previews[code], output))
+        if code not in {"bn", "en"} and entry["models"]:
+            path = output / "assets/converter"
+            path.mkdir(exist_ok=True)
+            shutil.copy2(ROOT / f"artifacts/converter/assets/{code}.json.gz", path)
         languages.append(entry)
     (output / "languages.json").write_text(json.dumps(languages, ensure_ascii=False, separators=(",", ":")) + "\n")
 
