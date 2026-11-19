@@ -11,7 +11,7 @@ Each dataset contains 20 hours of single-voice synthetic speech. The model cards
 | Bengali | [Jahnavi dataset](https://huggingface.co/datasets/Hansda/bengali-maya2-jahnavi-20h) | [Compact INT8 model](https://huggingface.co/Hansda/bengali-voice-compact) |
 | Gujarati | [Jahnavi dataset](https://huggingface.co/datasets/Hansda/gujarati-maya2-jahnavi-20h) | [Compact INT6 model](https://huggingface.co/Hansda/gujarati-voice-compact) |
 | Hindi | [Ishwari dataset](https://huggingface.co/datasets/Hansda/hindi-maya2-ishwari-20h) | [Compact INT6 and INT7 models](https://huggingface.co/Hansda/hindi-voice-compact) |
-| Malayalam | [Jahnavi dataset](https://huggingface.co/datasets/Hansda/malayalam-maya2-jahnavi-20h) | [Browser preview](https://tts.hansda.in/?lang=ml) |
+| Malayalam | [Jahnavi dataset](https://huggingface.co/datasets/Hansda/malayalam-maya2-jahnavi-20h) | [Compact INT6 model](https://huggingface.co/Hansda/malayalam-voice-compact) |
 | Telugu | [Sreekar dataset](https://huggingface.co/datasets/Hansda/telugu-maya2-sreekar-20h) | [Browser preview](https://tts.hansda.in/?lang=te) |
 | English | [Nivedita dataset](https://huggingface.co/datasets/Hansda/english-maya2-nivedita-20h) | [Compact INT6 model](https://huggingface.co/Hansda/english-voice-compact) |
 
