@@ -10,12 +10,17 @@
   <main class="page credits">
     <p><a href="./">Back to Browser Voice</a></p>
     <h1>Model credits</h1>
-    <p>The Bengali voice was trained on synthetic Bengali speech with the <a href="https://github.com/n4ze3m/tiny-voca">Tiny Voca architecture</a> (Apache 2.0).</p>
+    <h2>Models and training data</h2>
+    <p>Tamal Hansda trained the compact voices for Bengali, Gujarati, Hindi, Malayalam, Telugu, and English. The acoustic model adapts <a href="https://github.com/n4ze3m/tiny-voca">Tiny Voca by Muhammed Nazeem</a> under Apache 2.0. <a href="https://github.com/DarvinX/multilingual-browser-tts">Training pipeline and model diagrams</a></p>
+    <p><a href="https://huggingface.co/maya-research/maya2-native/tree/87a83efdd6551e038246b6b37836a6264713eec3">Maya 2 Native</a> (Apache 2.0) generated the training audio with its built-in voices and the <a href="https://huggingface.co/kyutai/mimi">Kyutai Mimi codec</a> (CC BY 4.0). Each dataset card lists the voice, prompt sources, and license terms. <a href="https://github.com/DarvinX/multilingual-browser-tts#datasets-and-models">Dataset and model cards</a></p>
+    <h2>Pronunciation and Roman input</h2>
     <ul>
-      <li><a href="https://huggingface.co/maya-research/maya2-native/tree/87a83efdd6551e038246b6b37836a6264713eec3">Maya 2 Native</a> generated the Jahnavi training audio (Apache 2.0). Maya uses <a href="https://huggingface.co/kyutai/mimi">Kyutai Mimi</a> for audio decoding (CC BY 4.0).</li>
-      <li>Training prompts came from <a href="https://github.com/common-voice/common-voice/blob/605c25e48f9fb87cb25ca794cb39bf91d3741f29/server/data/bn/sentence-collector.txt">Mozilla Common Voice's Bengali Sentence Collector</a> (CC0 1.0).</li>
-      <li>English pronunciation fallback uses <a href="https://github.com/cmusphinx/cmudict">the CMU Pronouncing Dictionary</a> (BSD-style license).</li>
-      <li>The Gujarati, Hindi, Malayalam, and Telugu Roman-input converters adapt the <a href="https://github.com/google-research-datasets/dakshina">Dakshina training lexicons</a> by Google Research under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Alternate spellings were ranked against language-specific prompt text.</li>
+      <li>The Bengali phonemizer uses the <a href="https://github.com/google/language-resources/tree/a90601024f07ab7e96c911243324e0adeb16da96/bn">Bengali pronunciation lexicon</a> by Google Inc. (CC BY 4.0). Its English loanword fallback uses the <a href="https://github.com/cmusphinx/cmudict">CMU Pronouncing Dictionary</a> (BSD-style license).</li>
+      <li>The Gujarati, Hindi, Malayalam, Telugu, and English phonemizers were trained with pronunciation labels from <a href="https://github.com/espeak-ng/espeak-ng">eSpeak NG</a>.</li>
+      <li>The Gujarati, Hindi, Malayalam, and Telugu Roman-input converters adapt <a href="https://github.com/google-research-datasets/dakshina">Dakshina training lexicons</a> by Google Research (CC BY-SA 4.0).</li>
+    </ul>
+    <h2>Browser</h2>
+    <ul>
       <li>The speech engine runs with <a href="https://github.com/microsoft/onnxruntime">ONNX Runtime Web</a> (MIT).</li>
       <li>The Bengali interface uses <a href="https://fonts.google.com/noto/specimen/Noto+Sans+Bengali">Noto Sans Bengali</a> (SIL Open Font License).</li>
     </ul>

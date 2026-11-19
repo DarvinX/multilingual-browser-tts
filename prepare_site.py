@@ -15,6 +15,13 @@ SCRIPTS = {"bn": ("বাংলা", "অ"), "gu": ("ગુજરાતી", "�
            "ml": ("മലയാളം", "അ"), "ta": ("தமிழ்", "அ"), "te": ("తెలుగు", "అ"), "en": ("English", "A")}
 
 
+def published_card(code, kind):
+    marker = ROOT / "artifacts/published" / f"{code}-{kind}.txt"
+    if marker.is_file():
+        return marker.read_text().strip().partition("/commit/")[0]
+    return None
+
+
 def model_choice(directory, url, mode, label=None):
     weights = (directory / "model.weights.gz").stat().st_size
     full = weights + (directory / "voice.onnx.gz").stat().st_size + (directory / "weight-shuffle.js").stat().st_size
@@ -70,21 +77,28 @@ def build(bengali, output):
         rows = [json.loads(line) for line in fixture.read_text().splitlines()]
         examples = [rows[i]["roman"] for i in (0, 1)] + [rows[i]["native"] for i in (3, 4)]
         entry = {"code": code, "name": name, "nativeName": native, "mark": mark, "voice": voice,
-                 "examples": examples, "models": [], "maxTokens": 512, "sampleRate": 24000}
+                 "examples": examples, "models": [], "maxTokens": 512, "sampleRate": 24000,
+                 "datasetCard": published_card(code, "dataset"), "modelCard": published_card(code, "model")}
         if code == "bn":
             option = model_choice(compact, "assets/bn-compact", "compact-int8", "Compact INT8")
             option["frontend"] = "./assets"
+            option["evaluation"] = {"mos": 2.255, "split": "validation"}
             entry.update(manifest)
+            entry["datasetCard"] = "https://huggingface.co/datasets/Hansda/bengali-maya2-jahnavi-20h"
+            entry["modelCard"] = "https://huggingface.co/Hansda/bengali-voice-compact"
             entry["models"] = [option, *manifest["models"]]
             entry["examples"] = ["Tumi kokhon bari phirbe?", "Kal shokale ami tomar jonno opekkha korbo.",
                                    "আজ বিকেলে বৃষ্টি হলে আমরা বাড়িতেই চা খাব।", "নদীর ধারে বসে আমরা সূর্য ডোবা দেখলাম।"]
-        elif (ROOT / f"artifacts/published/{code}-model.txt").is_file():
+        elif entry["modelCard"]:
             for variant in sorted((ROOT / f"artifacts/hf/models/{code}").iterdir()):
                 if not (variant / "browser/size.json").is_file():
                     continue
                 url = f"assets/{code}-{variant.name}"
                 shutil.copytree(variant / "browser", output / url, dirs_exist_ok=True)
-                entry["models"].append(model_choice(output / url, url, variant.name))
+                choice = model_choice(output / url, url, variant.name)
+                score = json.loads((variant / "test/mos.json").read_text())["predicted_mos"]
+                choice["evaluation"] = {"mos": score, "split": "test"}
+                entry["models"].append(choice)
             entry["models"].sort(key=lambda variant: (variant["id"] != "int8", variant["modelBytes"]))
         else:
             selection = previews.get(code) or best_preview(code)

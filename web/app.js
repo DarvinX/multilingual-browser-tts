@@ -54,9 +54,10 @@ function showChoice() {
   }
   if (choice.modelBytes) {
     let detail = `${choice.modelBytes.toLocaleString()} bytes for this model. The text frontend and browser engine load separately.`;
-    if (choice.preview) {
-      const split = choice.preview.split === 'test' ? 'held-out test' : 'validation';
-      detail += ` Preview scored ${choice.preview.mos.toFixed(3)} predicted MOS on ${split} audio.`;
+    const evaluation = choice.evaluation ?? choice.preview;
+    if (evaluation) {
+      const split = evaluation.split === 'test' ? 'held-out test' : 'validation';
+      detail += ` ${evaluation.mos.toFixed(3)} predicted MOS on ${split} audio.`;
     }
     byId('size').textContent = detail;
     status(modelStatus, loaded === choice.id ? `${choice.label ?? choice.id.toUpperCase()} is ready.` : 'Press Load model to download this option.');
@@ -246,6 +247,9 @@ text.addEventListener('input', count);
 
 function switchLanguage() {
   manifest = languages.find(entry => entry.code === language.value);
+  const url = new URL(location.href);
+  url.searchParams.set('lang', manifest.code);
+  history.replaceState(null, '', url);
   worker?.terminate();
   worker = undefined;
   loaded = undefined;
@@ -263,9 +267,16 @@ function switchLanguage() {
   byId('script-mark').textContent = manifest.mark;
   byId('script-mark').lang = manifest.code;
   byId('voice-name').textContent = manifest.voice;
-  byId('intro-copy').textContent = manifest.code === 'en'
-    ? `Hear English in the ${manifest.voice} voice. Load a model and press Play.`
-    : `Hear ${manifest.name} in the ${manifest.voice} voice. Type in ${manifest.name} script or Roman letters.`;
+  const input = manifest.code === 'en' ? 'English' : `${manifest.name} in native script or Roman letters`;
+  byId('intro-copy').textContent = `Type ${input}, then load a model and press Play.`;
+  const dataset = byId('dataset-card');
+  const modelCard = byId('model-card');
+  for (const [link, href] of [[dataset, manifest.datasetCard], [modelCard, manifest.modelCard]]) {
+    link.hidden = !href;
+    if (href) link.href = href;
+    else link.removeAttribute('href');
+  }
+  dataset.parentElement.hidden = dataset.hidden && modelCard.hidden;
   byId('pronounced').lang = manifest.code;
   for (const [i, example] of [...examples].entries()) {
     example.textContent = manifest.examples[i];
@@ -290,7 +301,8 @@ async function initialize() {
     if (!response.ok) throw new Error();
     languages = await response.json();
     for (const entry of languages) language.add(new Option(`${entry.name} · ${entry.nativeName}`, entry.code));
-    language.value = 'bn';
+    const requested = new URLSearchParams(location.search).get('lang');
+    language.value = languages.some(entry => entry.code === requested) ? requested : 'bn';
     language.disabled = false;
     switchLanguage();
   } catch {

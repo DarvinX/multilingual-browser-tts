@@ -56,6 +56,8 @@ textarea { display: block; width: 100%; min-height: 150px; resize: vertical; pad
 .primary:disabled { background: #eee8dd; color: #685c51; }
 .play::before { content: ''; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
 .caption, .status { margin: 9px 0 0; line-height: 1.4; }
+.voice-links, .footer nav { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.voice-links { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; }
 .status { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
 .status:empty { display: none; }
 .status.error { color: #a22824; }

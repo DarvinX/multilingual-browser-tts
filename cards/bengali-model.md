@@ -15,6 +15,8 @@ tags:
 
 # Bengali Voice · compact browser TTS
 
+[Try Bengali in the browser](https://tts.hansda.in/?lang=bn) · [Training dataset card](https://huggingface.co/datasets/Hansda/bengali-maya2-jahnavi-20h)
+
 Single-voice 24 kHz Bengali speech synthesis, adapted from [Tiny Voca](https://github.com/n4ze3m/tiny-voca). The compact model uses 112 hidden channels, 3 text blocks, 2 prosody blocks, 5 acoustic blocks, a source-filter vocoder, and a learned waveform residual. It has 930,224 parameters. The INT8 browser package comprises the compressed ONNX graph, packed weights, and 1,167-byte unpacker. A browser demo must also provide the frontend and shared ONNX runtime.
 
 | Artifact | Bytes | Naturalness | CER |

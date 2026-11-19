@@ -5,6 +5,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
+from urllib.parse import parse_qs, urlparse
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -29,11 +30,23 @@ def check(url):
         assert {locale["code"] for locale in released} == active
         options = language.locator("option").evaluate_all("options => options.map(option => option.value)")
         assert options == [locale["code"] for locale in released]
+        deep_link = released[-1]["code"]
+        assert page.goto(f"{url}?lang={deep_link}").ok
+        expect(language).to_have_value(deep_link)
         for locale in released:
             code = locale["code"]
             before = len(requests)
             language.select_option(code)
             expect(page.locator("#language-name")).to_have_text(locale["name"])
+            expect(page.locator("#voice-name")).to_have_text(locale["voice"])
+            assert parse_qs(urlparse(page.url).query)["lang"] == [code]
+            for field, selector in (("datasetCard", "#dataset-card"), ("modelCard", "#model-card")):
+                link = page.locator(selector)
+                if locale.get(field):
+                    expect(link).to_be_visible()
+                    expect(link).to_have_attribute("href", locale[field])
+                else:
+                    expect(link).to_be_hidden()
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
             assert not any("weights.gz" in req for _, req in requests[before:])
             load = page.locator("#load")
@@ -41,6 +54,9 @@ def check(url):
                 expect(load).to_be_disabled()
                 continue
             choice = locale["models"][0]
+            evaluation = choice.get("evaluation") or choice.get("preview")
+            if evaluation:
+                expect(page.locator("#size")).to_contain_text(f'{evaluation["mos"]:.3f} predicted MOS')
             load.click()
             expect(page.locator("#model-status")).to_contain_text("is ready.", timeout=45000)
             matches = [request for _, request in requests[before:] if request.endswith("weights.gz")]
@@ -55,6 +71,10 @@ def check(url):
                 page.locator("#play").click()
                 page.wait_for_function("old => { const a = document.querySelector('audio'); return a.src && a.src !== old && a.duration > 0 && a.currentTime > .09; }", arg=previous_audio, timeout=45000)
                 print(code, choice["id"], round(page.locator("#audio").evaluate("audio => audio.duration"), 2), sentence, flush=True)
+        credits = page.get_by_role("link", name="Model credits")
+        credits.click()
+        expect(page.get_by_role("heading", name="Models and training data")).to_be_visible()
+        expect(page.get_by_role("link", name="Dataset and model cards")).to_be_visible()
         assert all(method == "GET" for method, _ in requests), requests
         assert not errors, errors
         browser.close()
