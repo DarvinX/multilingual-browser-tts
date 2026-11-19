@@ -37,6 +37,21 @@ def preview_choice(code, selection, output):
     return choice
 
 
+def best_preview(code):
+    work = ROOT / "artifacts/training" / code
+    if not (work / "stages/refiner/step-03600-int8.pt.gz").is_file():
+        return None
+    candidates = work / "candidates"
+    scored = []
+    for metric in candidates.glob("*/*/validation/mos.json"):
+        candidate = metric.parents[1]
+        size = json.loads((candidate / "browser/size.json").read_text())["model_bytes"]
+        if size < 1_000_000:
+            score = json.loads(metric.read_text())["predicted_mos"]
+            scored.append((score, -size, candidate.relative_to(candidates).as_posix()))
+    return max(scored)[2] if scored else None
+
+
 def build(bengali, output):
     shutil.copytree(bengali, output, dirs_exist_ok=True)
     shutil.copytree(ROOT / "web", output, dirs_exist_ok=True)
@@ -71,8 +86,10 @@ def build(bengali, output):
                 shutil.copytree(variant / "browser", output / url, dirs_exist_ok=True)
                 entry["models"].append(model_choice(output / url, url, variant.name))
             entry["models"].sort(key=lambda variant: (variant["id"] != "int8", variant["modelBytes"]))
-        elif code in previews:
-            entry["models"].append(preview_choice(code, previews[code], output))
+        else:
+            selection = previews.get(code) or best_preview(code)
+            if selection:
+                entry["models"].append(preview_choice(code, selection, output))
         if code not in {"bn", "en"} and entry["models"]:
             path = output / "assets/converter"
             path.mkdir(exist_ok=True)
