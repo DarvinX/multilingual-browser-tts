@@ -15,28 +15,9 @@ The model download includes the compressed graph, packed weights, and weight unp
 
 ## Model architecture
 
-The compact model uses 112 hidden channels. A duration predictor expands phone states to acoustic frames at a 256-sample hop. Two source-filter branches generate the harmonic and noise components. A learned residual conditioned on acoustic states refines their sum.
+The compact model uses 112 hidden channels. A duration predictor expands phone states to acoustic frames at a 256-sample hop. Two source-filter branches generate the harmonic and noise components. A learned residual conditioned on acoustic states refines their sum. The diagram uses the stacked-block and residual-path notation of the Transformer paper. [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
 
-```mermaid
-flowchart TD
-    Input["Phone IDs, lexical stress, voice ID"] --> Embed["Token, stress, and voice embeddings"]
-    Embed --> Encoder["Phone encoder · 3 blocks"]
-    Encoder --> Duration["Duration and pause predictor"]
-    Encoder --> Expand["Expand phone states to frames"]
-    Duration --> Expand
-    Expand --> Prosody["Prosody stack · 2 blocks"]
-    Prosody --> Features["Predict pitch, voicing, and energy"]
-    Prosody --> Acoustic["Acoustic stack · 5 blocks"]
-    Features --> Acoustic
-    Features --> Harmonic["F0-driven harmonic source and filter"]
-    Acoustic --> Harmonic
-    Acoustic --> Noise["Shaped noise source and filter"]
-    Harmonic --> Mix["Sum harmonic and noise signals"]
-    Noise --> Mix
-    Mix --> Refiner["Waveform residual · 6 dilated layers"]
-    Acoustic --> Refiner
-    Refiner --> PCM["24 kHz waveform"]
-```
+![Compact model architecture with phone and frame tensor shapes, an expanded pre-normalized attention block with residual paths, and a detail view of the six-layer waveform refiner.](model-architecture.svg)
 
 [Acoustic model](src/tiny_voca/model.py) · [Waveform refiner](pipeline/wave_refiner.py)
 
@@ -44,22 +25,7 @@ flowchart TD
 
 **Load model** fetches the selected voice. **Play** normalizes the input, converts Romanized text where applicable, and runs the acoustic model in a Web Worker. The browser uses the pronunciation lexicon first and loads the ONNX grapheme-to-phoneme model when it encounters an unfamiliar word.
 
-```mermaid
-flowchart TD
-    Load["Load model · selected language and precision"] --> Fetch["Fetch compressed graph, packed weights, and text frontend"]
-    Fetch --> Session["Expand weights and create ONNX Runtime Web session"]
-    Play["Play · input text and speed"] --> Normalize["Normalize text and convert Romanized input when needed"]
-    Normalize --> Split["Split sentences and fit phone budget"]
-    Split --> Lexicon["Retrieve phones and stress from lexicon"]
-    Lexicon -->|Unknown word| G2P["Load and run ONNX grapheme-to-phoneme fallback"]
-    Lexicon -->|Known pronunciation| Tensors["Build phone and stress tensors"]
-    G2P --> Tensors
-    Tensors --> Run["Run voice ONNX in Web Worker"]
-    Session --> Run
-    Run --> Join["Join audio chunks and limit peak amplitude"]
-    Join --> WAV["Encode PCM as WAV"]
-    WAV --> Output["Play audio or download WAV"]
-```
+![Two browser inference lanes showing the selected model download and the path from text through pronunciation, acoustic inference, audio assembly, and WAV playback.](browser-inference.svg)
 
 [Browser worker](web/worker.js) · [Player and WAV encoding](web/app.js)
 
