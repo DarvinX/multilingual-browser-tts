@@ -13,6 +13,56 @@ The model download includes the compressed graph, packed weights, and weight unp
 
 [Bengali dataset](https://huggingface.co/datasets/Hansda/bengali-maya2-jahnavi-20h) · [Bengali model and card](https://huggingface.co/Hansda/bengali-voice-compact) · [Browser demo](https://tts.hansda.in)
 
+## Model architecture
+
+The compact model uses 112 hidden channels. A duration predictor expands phone states to acoustic frames at a 256-sample hop. Two source-filter branches generate the harmonic and noise components. A learned residual conditioned on acoustic states refines their sum.
+
+```mermaid
+flowchart TD
+    Input["Phone IDs, lexical stress, voice ID"] --> Embed["Token, stress, and voice embeddings"]
+    Embed --> Encoder["Phone encoder · 3 blocks"]
+    Encoder --> Duration["Duration and pause predictor"]
+    Encoder --> Expand["Expand phone states to frames"]
+    Duration --> Expand
+    Expand --> Prosody["Prosody stack · 2 blocks"]
+    Prosody --> Features["Predict pitch, voicing, and energy"]
+    Prosody --> Acoustic["Acoustic stack · 5 blocks"]
+    Features --> Acoustic
+    Features --> Harmonic["F0-driven harmonic source and filter"]
+    Acoustic --> Harmonic
+    Acoustic --> Noise["Shaped noise source and filter"]
+    Harmonic --> Mix["Sum harmonic and noise signals"]
+    Noise --> Mix
+    Mix --> Refiner["Waveform residual · 6 dilated layers"]
+    Acoustic --> Refiner
+    Refiner --> PCM["24 kHz waveform"]
+```
+
+[Acoustic model](src/tiny_voca/model.py) · [Waveform refiner](pipeline/wave_refiner.py)
+
+## Browser inference
+
+**Load model** fetches the selected voice. **Play** normalizes the input, converts Romanized text where applicable, and runs the acoustic model in a Web Worker. The browser uses the pronunciation lexicon first and loads the ONNX grapheme-to-phoneme model when it encounters an unfamiliar word.
+
+```mermaid
+flowchart TD
+    Load["Load model · selected language and precision"] --> Fetch["Fetch compressed graph, packed weights, and text frontend"]
+    Fetch --> Session["Expand weights and create ONNX Runtime Web session"]
+    Play["Play · input text and speed"] --> Normalize["Normalize text and convert Romanized input when needed"]
+    Normalize --> Split["Split sentences and fit phone budget"]
+    Split --> Lexicon["Retrieve phones and stress from lexicon"]
+    Lexicon -->|Unknown word| G2P["Load and run ONNX grapheme-to-phoneme fallback"]
+    Lexicon -->|Known pronunciation| Tensors["Build phone and stress tensors"]
+    G2P --> Tensors
+    Tensors --> Run["Run voice ONNX in Web Worker"]
+    Session --> Run
+    Run --> Join["Join audio chunks and limit peak amplitude"]
+    Join --> WAV["Encode PCM as WAV"]
+    WAV --> Output["Play audio or download WAV"]
+```
+
+[Browser worker](web/worker.js) · [Player and WAV encoding](web/app.js)
+
 ## Run the pipeline
 
 Use Python 3.12, an NVIDIA CUDA build of PyTorch for training, CTranslate2 with compatible CUDA/cuDNN for GPU ASR, and `libespeak-ng.so.1` for making G2P supervision. Install the packages in `requirements.txt` and [UTMOSv2](https://github.com/sarulab-speech/UTMOSv2) in the scoring environment. For the static-site check, install Google Chrome and Playwright. Maya runs in its own environment using the publisher's [inference setup](https://github.com/MayaResearch/maya2-native/tree/c6b376868e268551d065c4206193e96257bef4a1). Its checked weights revision is `87a83efdd6551e038246b6b37836a6264713eec3`. Check `source.json` for the pinned source details emitted for every generated language.
