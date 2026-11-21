@@ -1,11 +1,21 @@
 cff-version: 1.2.0
-message: "If you use tiny-voca, please cite it as below."
-title: "tiny-voca: a 4.5M-parameter two-voice English text-to-speech model"
+message: "If you use this software, please cite it using the metadata below."
+title: "Compact multilingual browser TTS"
 type: software
 authors:
-  - given-names: Muhammed
-    family-names: Nazeem
-    orcid: "https://orcid.org/0009-0002-9991-0217"
-year: 2026
+  - given-names: Tamal
+    family-names: Hansda
 license: Apache-2.0
-url: "https://huggingface.co/n4ze3m/tiny-voca"
+url: "https://github.com/DarvinX/multilingual-browser-tts"
+repository-code: "https://github.com/DarvinX/multilingual-browser-tts"
+references:
+  - type: software
+    title: "tiny-voca: a 4.5M-parameter two-voice English text-to-speech model"
+    authors:
+      - given-names: Muhammed
+        family-names: Nazeem
+        orcid: "https://orcid.org/0009-0002-9991-0217"
+    year: 2026
+    license: Apache-2.0
+    url: "https://huggingface.co/n4ze3m/tiny-voca"
+    repository-code: "https://github.com/n4ze3m/tiny-voca"
